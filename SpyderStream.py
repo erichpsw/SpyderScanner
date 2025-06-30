@@ -12,7 +12,7 @@ import io
 import google.generativeai as genai
 
 # Configure Gemini API
-genai.configure(api_key="YOUR_GEMINI_API_KEY")
+genai.configure(api_key="AIzaSyC-yiBI5CPgB1Yh0pMzRg0tWfGvfbode88")
 model = genai.GenerativeModel('gemini-pro')
 
 st.set_page_config(page_title="OMEN Smart Money Scanner", layout="centered")
