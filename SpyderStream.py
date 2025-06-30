@@ -112,6 +112,25 @@ if uploaded_file is not None:
                 header = f"{ticker} - {mcap} (${stock_price:.2f})"
                 Story.append(Paragraph(f"<b>{header}</b>", styles['Heading2']))
                 Story.append(Spacer(1, 8))
+                data = [
+                    ["Institutional Trade Type:", trade_type],
+                    ["Smart Money Sentiment:", overall_bias],
+                    ["Stealth Indicators:", stealth],
+                    ["Alerts:", alerts]
+                ]
+                table = Table(data, colWidths=[250, 500])
+                table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                    ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                    ('FONTSIZE', (0, 0), (-1, -1), 10),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ]))
+                Story.append(table)
+                Story.append(Spacer(1, 12))
 
                 report_text += f"## {header}\n"
                 report_text += f"Institutional Trade Type: {trade_type}\nSmart Money Sentiment: {overall_bias}\nStealth Indicators: {stealth}\nAlerts: {alerts}\n\n🔹 Top Trades:\n"
