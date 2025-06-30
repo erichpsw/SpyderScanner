@@ -12,7 +12,6 @@ st.title("🚀 OMEN Smart Money Scanner")
 
 uploaded_file = st.file_uploader("📤 Upload your SpyderScanner CSV or Excel file", type=["csv", "xls", "xlsx"])
 
-scan_type = None
 if uploaded_file is not None:
     scan_type = st.selectbox(
         "📊 Select Your Scan Type",
@@ -37,6 +36,8 @@ if uploaded_file is not None:
                 .str.replace(' ', '_')
                 .str.replace('-', '_')
             )
+
+            st.write("✅ Columns after cleanup:", list(df.columns))
 
             df = df.drop(columns=['stock_cnt.', 'option_cnt.', 'option_cnt..1'], errors='ignore')
 
@@ -89,14 +90,14 @@ if uploaded_file is not None:
                 else:
                     mcap = "Large Cap"
 
-                trade_type = "Sweep"
-                sentiment = "Bullish" if ticker_data['trade_spread'].str.contains("ask", case=False, na=False).any() else "Bearish"
-                stealth = "Above Ask" if ticker_data['trade_spread'].str.contains("above ask", case=False, na=False).any() else "At Bid"
+                trade_type = "Sweep" if "sweep" in ticker_data['flags'].str.lower().any() else "Block Trade"
+                stealth_list = list(ticker_data['trade_spread'].dropna().unique())
+                stealth = ", ".join(stealth_list) if stealth_list else "None"
                 alerts = ", ".join(ticker_data['alerts'].dropna().unique()) if ticker_data['alerts'].dropna().any() else "None"
 
                 report += f"## {ticker} - {mcap} (${stock_price:.2f})\n\n"
                 report += f"Institutional Trade Type: {trade_type}\n"
-                report += f"Overall Smart Money Sentiment: {sentiment}\n"
+                report += f"Overall Smart Money Sentiment: {overall_bias}\n"
                 report += f"Stealth Order Flow Indicators: {stealth}\n"
                 report += f"Smart Money Alerts Triggered: {alerts}\n\n"
 
@@ -107,9 +108,14 @@ if uploaded_file is not None:
                     c_or_p = row['call/put']
                     exp = row['expiration_date']
                     label = ["🏆", "🔥", "⚡"][idx % 3]
-                    report += f"{label} {strike} {c_or_p} - {exp}\n"
 
-                report += f"\n📌 Summary: Institutional traders are aggressively positioning in {ticker} across multiple strikes and expirations, signaling strong {sentiment.lower()} bias and accumulation/distribution.\n\n"
+                    spread = row['trade_spread'] if pd.notna(row['trade_spread']) else "Unknown"
+                    premium = parse_premium(row['premium'])
+                    premium_str = "${:,.2f}M".format(premium/1e6) if premium >= 1e6 else "${:,.0f}K".format(premium/1e3)
+
+                    report += f"{label} {strike}{c_or_p} - {exp} ({spread}, {premium_str} Premium)\n"
+
+                report += f"\n📌 Summary: Institutional traders are aggressively positioning in {ticker} with significant block trades or sweeps, signaling strong {overall_bias.lower()} bias and accumulation/distribution.\n\n"
 
             report += "📈 Final Market Sentiment Verdict\n"
             report += f"🔵 Bullish Bias: {overall_bias}\n\n"
@@ -121,13 +127,14 @@ if uploaded_file is not None:
 
             report = report.replace('’', "'")
 
-            pdf = FPDF(orientation='P', unit='mm', format='A4')
+            pdf = FPDF(orientation='L', unit='mm', format='A4')
             pdf.add_page()
             pdf.set_auto_page_break(auto=True, margin=10)
-            pdf.set_font("Arial", size=7)  # Smaller font to help wrapping
+            pdf.set_font("Arial", size=7)
 
             wrapped_lines = []
             for line in report.split('\n'):
+                line = line.replace(',', ', ')
                 wrapped_lines.extend(textwrap.wrap(line, width=90) or [" "])
 
             for line in wrapped_lines:
