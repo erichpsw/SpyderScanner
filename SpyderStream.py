@@ -134,7 +134,7 @@ if uploaded_file is not None:
                     premium = parse_premium(row['premium'])
                     premium_str = "${:,.2f}M".format(premium/1e6) if premium >= 1e6 else "${:,.0f}K".format(premium/1e3)
 
-                    trade_line = f"{label} {strike}{c_or_p} – {exp} ({spread}, {premium_str} Premium)"
+                    trade_line = f"{label} {strike} {c_or_p} – {exp} ({spread}, {premium_str} Premium)"
                     Story.append(Paragraph(trade_line, styles['BodyText']))
                     report_text += trade_line + "\n"
 
