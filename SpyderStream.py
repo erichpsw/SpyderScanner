@@ -7,24 +7,25 @@ import google.generativeai as genai
 from datetime import datetime
 
 # ============================================
-# 🔑 API Keys
+# 🔑 API Keys (currently not used but configured)
 # ============================================
-OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
-GOOGLE_API_KEY = st.secrets["GEMINI_API_KEY"]
+OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", "")
+GOOGLE_API_KEY = st.secrets.get("GEMINI_API_KEY", "")
 
-# Initialize OpenAI client
+# Initialize APIs (not used in this version but ready)
 openai.api_key = OPENAI_API_KEY
-
-# Configure Gemini API
 genai.configure(api_key=GOOGLE_API_KEY)
 gemini_model = genai.GenerativeModel('gemini-pro')
 
 # ============================================
-# 🚀 Streamlit App
+# 🚀 Streamlit App Config
 # ============================================
 st.set_page_config(page_title="OMENReport - Spider Scanner", layout="centered")
 st.title("🚀 OMENReport - Spider Options Scanner")
 
+# ============================================
+# 📥 File Upload Section
+# ============================================
 uploaded_file = st.file_uploader("📤 Upload Spider Scanner CSV or Excel", type=["csv", "xls", "xlsx"])
 
 if uploaded_file is not None:
@@ -34,7 +35,7 @@ if uploaded_file is not None:
         else:
             df = pd.read_excel(uploaded_file)
 
-        # Aggressively clean column names
+        # Clean column names aggressively
         df.columns = (
             df.columns
             .str.strip()
@@ -49,7 +50,9 @@ if uploaded_file is not None:
 
         st.write("✅ Columns after cleanup:", df.columns.tolist())
 
-        # Handle ticker column flexibly
+        # ============================================
+        # 🔍 Find Ticker Column Dynamically
+        # ============================================
         if 'ticker' in df.columns:
             ticker_column = 'ticker'
         elif 'underlying' in df.columns:
@@ -60,11 +63,23 @@ if uploaded_file is not None:
             st.error("❌ No ticker, underlying, or symbol column found in file.")
             st.stop()
 
+        # ============================================
+        # 🔢 Convert Numeric Columns Safely
+        # ============================================
+        numeric_cols = ['premium', 'trade_size', 'open_interest', 'stock_last']
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+
+        # ============================================
+        # 📝 OMENReport Generation
+        # ============================================
         if st.button("⚙️ Run OMENReport"):
             st.subheader("📄 OMENReport Results")
 
             report_text = ""
             tickers = df[ticker_column].unique()
+
             for ticker in tickers:
                 ticker_data = df[df[ticker_column] == ticker]
 
@@ -78,8 +93,10 @@ if uploaded_file is not None:
 
             report_text += "\n---\nGenerated with OMENReport Scanner\n"
 
+            # Display report
             st.text_area("📊 OMENReport Output", report_text, height=500)
 
+            # Download button
             st.download_button(
                 label="📥 Download OMENReport",
                 data=report_text,
