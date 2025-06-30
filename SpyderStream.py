@@ -90,7 +90,11 @@ if uploaded_file is not None:
                 else:
                     mcap = "Large Cap"
 
-                trade_type = "Sweep" if "sweep" in ticker_data['flags'].str.lower().any() else "Block Trade"
+                if ticker_data['flags'].str.contains("sweep", case=False, na=False).any():
+                    trade_type = "Sweep"
+                else:
+                    trade_type = "Block Trade"
+
                 stealth_list = list(ticker_data['trade_spread'].dropna().unique())
                 stealth = ", ".join(stealth_list) if stealth_list else "None"
                 alerts = ", ".join(ticker_data['alerts'].dropna().unique()) if ticker_data['alerts'].dropna().any() else "None"
