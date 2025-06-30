@@ -5,7 +5,6 @@ from reportlab.lib.pagesizes import landscape, letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
-import textwrap
 import io
 
 st.set_page_config(page_title="OMEN Smart Money Scanner", layout="centered")
@@ -13,7 +12,6 @@ st.title("🚀 OMEN Smart Money Scanner")
 
 uploaded_file = st.file_uploader("📤 Upload your SpyderScanner CSV or Excel file", type=["csv", "xls", "xlsx"])
 
-scan_type = None
 if uploaded_file is not None:
     scan_type = st.selectbox(
         "📊 Select Your Scan Type",
@@ -117,7 +115,14 @@ if uploaded_file is not None:
                 Story.append(Paragraph("<b>🔹 Top Trades Identified:</b>", styles['Heading3']))
                 report_text += f"## {header}\n\nInstitutional Trade Type: {trade_type}\nSmart Money Sentiment: {overall_bias}\nStealth Indicators: {stealth}\nAlerts: {alerts}\n\n🔹 Top Trades:\n"
 
-                top_trades = ticker_data.head(3)
+                stealth_keywords = ["above ask", "askish", "at ask", "at bid", "hidden"]
+                filtered = ticker_data.copy()
+                filtered['stealth_flag'] = filtered['trade_spread'].str.lower().apply(lambda x: any(k in str(x) for k in stealth_keywords))
+                filtered['alert_flag'] = filtered['alerts'].notnull()
+
+                filtered = filtered.sort_values(by=['stealth_flag', 'alert_flag', 'premiumvalue'], ascending=[False, False, False])
+                top_trades = filtered.head(3)
+
                 for idx, row in top_trades.iterrows():
                     strike = row['strike']
                     c_or_p = row['call/put']
@@ -132,10 +137,10 @@ if uploaded_file is not None:
                     report_text += trade_line + "\n"
 
                 Story.append(Spacer(1, 12))
-                summary = f"<b>📌 Summary:</b> Institutional traders are aggressively positioning in {ticker} with significant block trades or sweeps, signaling strong {overall_bias.lower()} bias."
-                Story.append(Paragraph(summary, styles['BodyText']))
+                summary_text = f"📌 Summary: Institutional traders are aggressively positioning in {ticker} with significant block trades or sweeps, signaling strong {overall_bias.lower()} bias."
+                Story.append(Paragraph(summary_text, styles['BodyText']))
                 Story.append(Spacer(1, 12))
-                report_text += "\n📌 Summary: " + summary + "\n\n"
+                report_text += "\n" + summary_text + "\n\n"
 
             Story.append(Paragraph("<b>📈 Final Market Sentiment Verdict:</b>", styles['BodyText']))
             Story.append(Paragraph(f"🔵 Bullish Bias: {overall_bias}", styles['BodyText']))
