@@ -5,6 +5,8 @@ from reportlab.lib.pagesizes import landscape, letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import Paragraph
+from reportlab.lib.styles import getSampleStyleSheet
 import io
 
 st.set_page_config(page_title="OMEN Smart Money Scanner", layout="centered")
@@ -112,8 +114,6 @@ if uploaded_file is not None:
                 header = f"{ticker} - {mcap} (${stock_price:.2f})"
                 Story.append(Paragraph(f"<b>{header}</b>", styles['Heading2']))
                 Story.append(Spacer(1, 8))
-                from reportlab.platypus import Paragraph
-                from reportlab.lib.styles import getSampleStyleSheet
                 styles = getSampleStyleSheet()
                 data = [
                     ["Institutional Trade Type:", trade_type],
@@ -126,6 +126,7 @@ if uploaded_file is not None:
                     ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
                     ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
                     ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                    ('WORDWRAP', (0, 0), (-1, -1), 'CJK'),
                     ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
                     ('FONTSIZE', (0, 0), (-1, -1), 10),
                     ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
