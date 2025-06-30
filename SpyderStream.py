@@ -135,9 +135,29 @@ if uploaded_file is not None:
                 trade_type = "Sweep" if ticker_data['flags'].str.contains("sweep", case=False, na=False).any() else "Block Trade"
 
                 stealth = ", ".join(sorted(set(ticker_data['trade_spread'].dropna()))) or "None"
-                alerts = ", ".join(sorted(set(ticker_data.loc[
-                    (ticker_data['DonkeyKong'] | ticker_data['RepeaterFlag'] | ticker_data['AllTheThings']), 'alerts'
-                ].dropna()))) or "None"
+
+                # ✅ Alert Logic - Clean Filtered
+                if ticker_data['DonkeyKong'].any():
+                    alerts = 'DonkeyKong'
+                elif (
+                    ticker_data['DonkeyKong'].any() and
+                    ticker_data['RepeaterFlag'].any() and
+                    ticker_data['trade_spread'].isin(['Above Ask', 'Askish']).any()
+                ):
+                    alerts = 'All the Things'
+                elif ticker_data['RepeaterFlag'].any():
+                    repeater_group = (
+                        ticker_data[ticker_data['RepeaterFlag']].groupby(['symbol', 'strike', 'expiration_date'])
+                        .agg({'premiumvalue': 'sum'})
+                        .reset_index()
+                    )
+                    if not repeater_group.empty:
+                        top_repeater = repeater_group.sort_values(by='premiumvalue', ascending=False).iloc[0]
+                        alerts = f"Repeater {top_repeater['strike']} {top_repeater['expiration_date']}"
+                    else:
+                        alerts = 'Repeater'
+                else:
+                    alerts = 'None'
 
                 call_count = ticker_data[ticker_data['call/put'].str.lower() == 'call'].shape[0]
                 put_count = ticker_data[ticker_data['call/put'].str.lower() == 'put'].shape[0]
