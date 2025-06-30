@@ -112,11 +112,14 @@ if uploaded_file is not None:
                 header = f"{ticker} - {mcap} (${stock_price:.2f})"
                 Story.append(Paragraph(f"<b>{header}</b>", styles['Heading2']))
                 Story.append(Spacer(1, 8))
+                from reportlab.platypus import Paragraph
+                from reportlab.lib.styles import getSampleStyleSheet
+                styles = getSampleStyleSheet()
                 data = [
                     ["Institutional Trade Type:", trade_type],
                     ["Smart Money Sentiment:", overall_bias],
-                    ["Stealth Indicators:", stealth],
-                    ["Alerts:", alerts]
+                    ["Stealth Indicators:", Paragraph(stealth, styles["BodyText"])],
+                    ["Alerts:", Paragraph(alerts, styles["BodyText"])]
                 ]
                 table = Table(data, colWidths=[250, 500])
                 table.setStyle(TableStyle([
