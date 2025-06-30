@@ -34,6 +34,10 @@ if uploaded_file is not None:
 
             df['symbol'] = df['symbol'].astype(str).str.upper().str.strip()
 
+            df['stock_last'] = pd.to_numeric(df['stock_last'], errors='coerce')
+            if df['stock_last'].isnull().all():
+                st.error("❌ Stock_Last column failed to parse. Check CSV formatting.")
+
             def parse_premium(val):
                 try:
                     val = str(val).replace('$', '').replace(',', '').strip().lower()
@@ -46,14 +50,13 @@ if uploaded_file is not None:
                     return 0
 
             df['premiumvalue'] = df['premium'].apply(parse_premium)
-            df['stock_last_numeric'] = pd.to_numeric(df['stock_last'], errors='coerce').fillna(0)
 
             if scan_type == "Scan Report Small Cap":
-                df = df[df['stock_last_numeric'] < 20]
+                df = df[df['stock_last'] < 20]
             elif scan_type == "Scan Report Mid Cap":
-                df = df[(df['stock_last_numeric'] >= 20) & (df['stock_last_numeric'] <= 100)]
+                df = df[(df['stock_last'] >= 20) & (df['stock_last'] <= 100)]
             elif scan_type == "Scan Report Large Cap":
-                df = df[df['stock_last_numeric'] > 100]
+                df = df[df['stock_last'] > 100]
             elif scan_type == "Scan Report Targeted":
                 tickers = [x.strip().upper() for x in tickers_input.split(',')]
                 df = df[df['symbol'].isin(tickers)]
@@ -92,9 +95,10 @@ if uploaded_file is not None:
             for ticker in top_tickers:
                 ticker_data = df[df['symbol'] == ticker]
 
-                stock_price = ticker_data['stock_last_numeric'].dropna().mean()
-                if pd.isna(stock_price) or stock_price == 0:
-                    stock_price = df[df['symbol'] == ticker]['stock_last_numeric'].dropna().mean()
+                try:
+                    stock_price = ticker_data['stock_last'].dropna().iloc[0]
+                except:
+                    stock_price = df[df['symbol'] == ticker]['stock_last'].dropna().iloc[0] if not df[df['symbol'] == ticker]['stock_last'].dropna().empty else 0
 
                 mcap = "Small Cap" if stock_price < 20 else "Mid Cap" if stock_price <= 100 else "Large Cap"
 
