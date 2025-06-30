@@ -59,20 +59,34 @@ if uploaded_file is not None:
                 df = df[df['symbol'].isin(tickers)]
 
             grouped = df.groupby('symbol').agg({'premiumvalue':'sum'}).reset_index()
-            top_tickers = grouped.sort_values(by='premiumvalue', ascending=False)['symbol'].tolist()
+            top_tickers = grouped.sort_values(by='premiumvalue', ascending=False).head(3)['symbol'].tolist()
 
             calls = df[df['call/put'].str.upper() == 'CALL']['premiumvalue'].sum()
             puts = df[df['call/put'].str.upper() == 'PUT']['premiumvalue'].sum()
             overall_bias = "Bullish" if calls >= puts else "Bearish"
 
-            report_text = "OMEN Report - Smart Money Scan Report\n\n"
-            report_text += "This report integrates Ben Sturgill's Smart Money Strategies, focusing on Stealth Sweeps, Block Trades, Repeater Alerts, and Institutional Order Flow.\n\n"
+            header_block = (
+                "OMENReport - Smart Money Scan Report\n\n"
+                "This report integrates Ben Sturgill’s Smart Money Strategies, focusing on Stealth Sweeps, Block Trades, Repeater Alerts, "
+                "and Institutional Order Flow. The trades included have been ranked using a proprietary scoring system that balances "
+                "institutional premium size, Smart Money Alerts, same-day trade flow, multi-strike positioning, and multi-expiration setups.\n\n"
+                "⸻\n\n"
+                "🚀 Top 3 Tickers with High-Probability Trades\n\n"
+            )
+
+            report_text = header_block
 
             styles = getSampleStyleSheet()
             buffer = io.BytesIO()
             pdf = SimpleDocTemplate(buffer, pagesize=landscape(letter), rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=18)
-            Story = [Paragraph("<b>OMEN Report - Smart Money Scan Report</b>", styles['Title']), Spacer(1, 12)]
-            Story.append(Paragraph("This report integrates Ben Sturgill's Smart Money Strategies, focusing on Stealth Sweeps, Block Trades, Repeater Alerts, and Institutional Order Flow.", styles['BodyText']))
+            Story = [Paragraph("<b>OMENReport - Smart Money Scan Report</b>", styles['Title']), Spacer(1, 12)]
+            Story.append(Paragraph(
+                "This report integrates Ben Sturgill’s Smart Money Strategies, focusing on Stealth Sweeps, Block Trades, Repeater Alerts, "
+                "and Institutional Order Flow. The trades included have been ranked using a proprietary scoring system that balances "
+                "institutional premium size, Smart Money Alerts, same-day trade flow, multi-strike positioning, and multi-expiration setups.",
+                styles['BodyText']))
+            Story.append(Spacer(1, 12))
+            Story.append(Paragraph("<b>🚀 Top 3 Tickers with High-Probability Trades</b>", styles['Heading2']))
             Story.append(Spacer(1, 12))
 
             for ticker in top_tickers:
@@ -147,7 +161,7 @@ if uploaded_file is not None:
             Story.append(Spacer(1, 12))
 
             pdf.build(Story)
-            st.text_area("📊 OMEN Smart Money Report", report_text, height=500)
+            st.text_area("📊 OMEN Smart Money Report", report_text, height=600)
 
             st.download_button(
                 label="📥 Download OMENReport as PDF",
