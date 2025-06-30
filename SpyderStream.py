@@ -55,6 +55,43 @@ if uploaded_file is not None:
 
             df['premiumvalue'] = df['premium'].apply(parse_premium)
 
+            # ✅ Institutional Order Filter
+            df = df[df['flags'].str.contains('sweep|block|multi', case=False, na=False)]
+
+            # ✅ Stealth Weighting + Priority Score
+            stealth_weight = {
+                'Above Ask': 4,
+                'Askish': 3,
+                'Bidish': -2,
+                'At Bid': -3
+            }
+
+            df['stealth_score'] = df['trade_spread'].map(stealth_weight).fillna(0)
+            df['priority_score'] = (df['stealth_score'] * 1_000_000) + df['premiumvalue']
+
+            df = df.sort_values(by='priority_score', ascending=False)
+
+            # ✅ Smart Money Alerts
+            df['DonkeyKong'] = df['premiumvalue'] >= 1_000_000
+
+            repeater_group = df.groupby(['symbol', 'strike', 'expiration_date', 'call/put']).size().reset_index(name='count')
+            repeater_hits = repeater_group[repeater_group['count'] >= 2]
+
+            df['RepeaterFlag'] = df.apply(
+                lambda row: ((repeater_hits['symbol'] == row['symbol']) &
+                             (repeater_hits['strike'] == row['strike']) &
+                             (repeater_hits['expiration_date'] == row['expiration_date']) &
+                             (repeater_hits['call/put'] == row['call/put'])).any(),
+                axis=1
+            )
+
+            df['AllTheThings'] = (
+                df['DonkeyKong'] &
+                (df['trade_spread'].isin(['Above Ask', 'Askish'])) &
+                (df['RepeaterFlag'])
+            )
+
+            # ✅ Cap Filters
             today = datetime.datetime.today()
 
             if scan_type == "Scan Report Small Cap":
@@ -77,18 +114,17 @@ if uploaded_file is not None:
             top_n = 5 if scan_type == "Scan Report Long Term" else 3
             top_tickers = grouped.sort_values(by='premiumvalue', ascending=False).head(top_n)['symbol'].tolist()
 
+            # ✅ Reporting Section
             styles = getSampleStyleSheet()
             buffer = io.BytesIO()
             pdf = SimpleDocTemplate(buffer, pagesize=landscape(letter))
             Story = []
 
-            # Header block
-            header_block = f"OMENReport - Smart Money Scan Report\nFilter: {scan_type}\n"
             Story.append(Paragraph("<b>OMENReport - Smart Money Scan Report</b>", styles['Title']))
             Story.append(Paragraph(f"<b>Filter: {scan_type}</b>", styles['Heading2']))
             Story.append(Spacer(1, 12))
 
-            report_text = header_block + "\n"
+            report_text = f"OMENReport - Smart Money Scan Report\nFilter: {scan_type}\n\n"
 
             for ticker in top_tickers:
                 ticker_data = df[df['symbol'] == ticker]
@@ -99,9 +135,10 @@ if uploaded_file is not None:
                 trade_type = "Sweep" if ticker_data['flags'].str.contains("sweep", case=False, na=False).any() else "Block Trade"
 
                 stealth = ", ".join(sorted(set(ticker_data['trade_spread'].dropna()))) or "None"
-                alerts = ", ".join(sorted(set(ticker_data['alerts'].dropna()))) or "None"
+                alerts = ", ".join(sorted(set(ticker_data.loc[
+                    (ticker_data['DonkeyKong'] | ticker_data['RepeaterFlag'] | ticker_data['AllTheThings']), 'alerts'
+                ].dropna()))) or "None"
 
-                # Sentiment Calculation - Trade Count with 10% buffer
                 call_count = ticker_data[ticker_data['call/put'].str.lower() == 'call'].shape[0]
                 put_count = ticker_data[ticker_data['call/put'].str.lower() == 'put'].shape[0]
 
@@ -112,23 +149,22 @@ if uploaded_file is not None:
                 else:
                     sentiment = "Neutral"
 
-                # Build header
                 Story.append(Paragraph(f"<b>{ticker} - {mcap} (${stock_price:.2f})</b>", styles['Heading2']))
                 Story.append(Spacer(1, 8))
 
                 Story.append(Paragraph(f"Institutional Trade Type: {trade_type}", styles['BodyText']))
                 Story.append(Paragraph(f"Overall Smart Money Sentiment: {sentiment}", styles['BodyText']))
-                Story.append(Paragraph(f"Stealth Order Flow Indicators: {stealth}", styles['BodyText']))
+                Story.append(Paragraph(f"Stealth Indicators: {stealth}", styles['BodyText']))
                 Story.append(Paragraph(f"Smart Money Alerts Triggered: {alerts}", styles['BodyText']))
                 Story.append(Spacer(1, 8))
 
-                report_text += f"\n## {ticker} - {mcap} (${stock_price:.2f})\n"
+                report_text += f"## {ticker} - {mcap} (${stock_price:.2f})\n"
                 report_text += f"Institutional Trade Type: {trade_type}\n"
                 report_text += f"Overall Smart Money Sentiment: {sentiment}\n"
-                report_text += f"Stealth Order Flow Indicators: {stealth}\n"
+                report_text += f"Stealth Indicators: {stealth}\n"
                 report_text += f"Smart Money Alerts Triggered: {alerts}\n\n"
 
-                filtered = ticker_data.sort_values(by=['premiumvalue'], ascending=False).head(3)
+                filtered = ticker_data.sort_values(by=['priority_score'], ascending=False).head(3)
 
                 for idx, row in filtered.iterrows():
                     label = ["🏆", "🔥", "⚡"][idx % 3]
@@ -143,10 +179,10 @@ if uploaded_file is not None:
                     Story.append(Paragraph(trade_line, styles['BodyText']))
                     report_text += trade_line + "\n"
 
-                    summary_text = (
-                        f"📌 Summary: Institutional traders are aggressively positioning in {ticker} with "
-                        f"significant {trade_type.lower()} trades. This setup signals strong {sentiment.lower()} bias."
-                    )
+                summary_text = (
+                    f"📌 Summary: Institutional traders are aggressively positioning in {ticker} with "
+                    f"significant {trade_type.lower()} trades. This setup signals strong {sentiment.lower()} bias."
+                )
 
                 Story.append(Paragraph(summary_text, styles['BodyText']))
                 Story.append(Spacer(1, 12))
