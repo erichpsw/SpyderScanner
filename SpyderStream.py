@@ -94,7 +94,7 @@ if uploaded_file is not None:
                 stealth = "Above Ask" if ticker_data['trade_spread'].str.contains("above ask", case=False, na=False).any() else "At Bid"
                 alerts = ", ".join(ticker_data['alerts'].dropna().unique()) if ticker_data['alerts'].dropna().any() else "None"
 
-                report += f"## {ticker} - {mcap}\n\n"
+                report += f"## {ticker} - {mcap} (${stock_price:.2f})\n\n"
                 report += f"Institutional Trade Type: {trade_type}\n"
                 report += f"Overall Smart Money Sentiment: {sentiment}\n"
                 report += f"Stealth Order Flow Indicators: {stealth}\n"
@@ -121,17 +121,17 @@ if uploaded_file is not None:
 
             report = report.replace('’', "'")
 
-            pdf = FPDF()
+            pdf = FPDF(orientation='P', unit='mm', format='A4')
             pdf.add_page()
-            pdf.set_auto_page_break(auto=True, margin=15)
-            pdf.set_font("Arial", size=10)
+            pdf.set_auto_page_break(auto=True, margin=10)
+            pdf.set_font("Arial", size=7)  # Smaller font to help wrapping
 
             wrapped_lines = []
             for line in report.split('\n'):
-                wrapped_lines.extend(textwrap.wrap(line, width=100) or [" "])
+                wrapped_lines.extend(textwrap.wrap(line, width=90) or [" "])
 
             for line in wrapped_lines:
-                pdf.multi_cell(0, 8, line)
+                pdf.multi_cell(0, 5, line)
 
             pdf_output = pdf.output(dest='S').encode('latin1')
 
