@@ -34,24 +34,43 @@ if uploaded_file is not None:
         else:
             df = pd.read_excel(uploaded_file)
 
-        df.columns = df.columns.str.strip()
+        # Aggressively clean column names
+        df.columns = (
+            df.columns
+            .str.strip()
+            .str.lower()
+            .str.replace(' ', '_')
+            .str.replace('-', '_')
+        )
+
         st.success("✅ File uploaded and processed successfully.")
         st.subheader("Original Data Preview")
         st.dataframe(df.head())
 
+        st.write("✅ Columns after cleanup:", df.columns.tolist())
+
+        # Handle ticker column flexibly
+        if 'ticker' in df.columns:
+            ticker_column = 'ticker'
+        elif 'underlying' in df.columns:
+            ticker_column = 'underlying'
+        else:
+            st.error("❌ No ticker or underlying column found in file.")
+            st.stop()
+
         if st.button("⚙️ Run OMENReport"):
             st.subheader("📄 OMENReport Results")
 
-            # Example Report Generation
             report_text = ""
-            tickers = df["Ticker"].unique()
+            tickers = df[ticker_column].unique()
             for ticker in tickers:
-                ticker_data = df[df["Ticker"] == ticker]
-                total_premium = ticker_data["Premium"].sum()
+                ticker_data = df[df[ticker_column] == ticker]
+
+                ticker_premium = ticker_data['premium'].sum() if 'premium' in ticker_data.columns else 0
                 trade_count = len(ticker_data)
 
                 report_text += f"---\nTicker: {ticker}\n"
-                report_text += f"Total Premium: ${total_premium:,.2f}\n"
+                report_text += f"Total Premium: ${ticker_premium:,.2f}\n"
                 report_text += f"Trade Count: {trade_count}\n"
                 report_text += "Insight: Example insight goes here.\n"
 
