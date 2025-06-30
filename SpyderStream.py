@@ -1,13 +1,19 @@
 
+# ✔️ OMEN Smart Money Scanner
+# ✔️ Fully integrated with Google Gemini AI for summaries
+
 import streamlit as st
 import pandas as pd
 from reportlab.lib.pagesizes import landscape, letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.platypus import Paragraph
-from reportlab.lib.styles import getSampleStyleSheet
 import io
+import google.generativeai as genai
+
+# Configure Gemini API
+genai.configure(api_key="YOUR_GEMINI_API_KEY")
+model = genai.GenerativeModel('gemini-pro')
 
 st.set_page_config(page_title="OMEN Smart Money Scanner", layout="centered")
 st.title("🚀 OMEN Smart Money Scanner")
@@ -114,40 +120,13 @@ if uploaded_file is not None:
                 header = f"{ticker} - {mcap} (${stock_price:.2f})"
                 Story.append(Paragraph(f"<b>{header}</b>", styles['Heading2']))
                 Story.append(Spacer(1, 8))
-                styles = getSampleStyleSheet()
-                data = [
-                    ["Institutional Trade Type:", trade_type],
-                    ["Smart Money Sentiment:", overall_bias],
-                    ["Stealth Indicators:", Paragraph(stealth, styles["BodyText"])],
-                    ["Alerts:", Paragraph(alerts, styles["BodyText"])]
-                ]
-                table = Table(data, colWidths=[250, 500])
-                table.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                    ('WORDWRAP', (0, 0), (-1, -1), 'CJK'),
-                    ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-                    ('FONTSIZE', (0, 0), (-1, -1), 10),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                    ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ]))
-                Story.append(table)
-                Story.append(Spacer(1, 12))
 
                 report_text += f"## {header}\n"
                 report_text += f"Institutional Trade Type: {trade_type}\nSmart Money Sentiment: {overall_bias}\nStealth Indicators: {stealth}\nAlerts: {alerts}\n\n🔹 Top Trades:\n"
 
-                stealth_keywords = ["above ask", "askish", "at ask", "at bid", "hidden"]
-                filtered = ticker_data.copy()
-                filtered['stealth_flag'] = filtered['trade_spread'].str.lower().apply(lambda x: any(k in str(x) for k in stealth_keywords))
-                filtered['alert_flag'] = filtered['alerts'].notnull()
+                filtered = ticker_data.sort_values(by=['premiumvalue'], ascending=False).head(3)
 
-                filtered = filtered.sort_values(by=['stealth_flag', 'alert_flag', 'premiumvalue'], ascending=[False, False, False])
-                top_trades = filtered.head(3)
-
-                for idx, row in top_trades.iterrows():
+                for idx, row in filtered.iterrows():
                     label = ["🏆", "🔥", "⚡"][idx % 3]
 
                     strike = row['strike']
@@ -161,11 +140,18 @@ if uploaded_file is not None:
                     Story.append(Paragraph(trade_line, styles['BodyText']))
                     report_text += trade_line + "\n"
 
+                # Generate AI Summary
+                ai_summary = genai.GenerativeModel('gemini-pro').generate_content(
+                    f"Write a concise summary for options activity on {ticker}. "
+                    f"Trade Type: {trade_type}. Sentiment: {overall_bias}. "
+                    f"Stealth Indicators: {stealth}. Alerts: {alerts}. "
+                    f"Top Trades: {', '.join(filtered['strike'].astype(str) + ' ' + filtered['call/put'] + ' – ' + filtered['expiration_date'].astype(str))}. "
+                    f"Explain what this suggests about institutional positioning in 2-3 sentences."
+                ).text.strip()
+
+                Story.append(Paragraph(f"📌 AI Summary: {ai_summary}", styles['BodyText']))
                 Story.append(Spacer(1, 12))
-                summary_text = f"📌 Summary: Institutional traders are aggressively positioning in {ticker} with significant block trades or sweeps, signaling strong {overall_bias.lower()} bias."
-                Story.append(Paragraph(summary_text, styles['BodyText']))
-                Story.append(Spacer(1, 12))
-                report_text += "\n" + summary_text + "\n\n"
+                report_text += "\n" + f"📌 AI Summary: {ai_summary}" + "\n\n"
 
             Story.append(Paragraph("<b>📈 Final Market Sentiment Verdict:</b>", styles['BodyText']))
             Story.append(Paragraph(f"🔵 Bullish Bias: {overall_bias}", styles['BodyText']))
