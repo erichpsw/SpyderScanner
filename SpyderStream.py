@@ -2,6 +2,7 @@
 # ✔️ OMEN Smart Money Scanner
 # ✔️ Includes Small Cap, Mid Cap, Large Cap, Long Term (Top 5 for Long Term)
 # ✔️ Filter label added to both PDF and screen output
+# ✔️ Institutional Trade Type, Stealth Indicators, and Alerts now included in PDF
 
 import streamlit as st
 import pandas as pd
@@ -76,7 +77,6 @@ if uploaded_file is not None:
             pdf = SimpleDocTemplate(buffer, pagesize=landscape(letter))
             Story = []
 
-            # Header block with filter label
             header_block = f"OMENReport - Smart Money Scan Report\nFilter: {scan_type}\n"
             Story.append(Paragraph("<b>OMENReport - Smart Money Scan Report</b>", styles['Title']))
             Story.append(Paragraph(f"<b>Filter: {scan_type}</b>", styles['Heading2']))
@@ -95,6 +95,11 @@ if uploaded_file is not None:
                 alerts = ", ".join(ticker_data['alerts'].dropna().unique()) or "None"
 
                 Story.append(Paragraph(f"<b>{ticker} - {mcap} (${stock_price:.2f})</b>", styles['Heading2']))
+                Story.append(Spacer(1, 8))
+
+                Story.append(Paragraph(f"Institutional Trade Type: {trade_type}", styles['BodyText']))
+                Story.append(Paragraph(f"Stealth Indicators: {stealth}", styles['BodyText']))
+                Story.append(Paragraph(f"Alerts: {alerts}", styles['BodyText']))
                 Story.append(Spacer(1, 8))
 
                 report_text += f"\n## {ticker} - {mcap} (${stock_price:.2f})\n"
