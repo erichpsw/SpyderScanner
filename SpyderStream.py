@@ -54,8 +54,10 @@ if uploaded_file is not None:
             ticker_column = 'ticker'
         elif 'underlying' in df.columns:
             ticker_column = 'underlying'
+        elif 'symbol' in df.columns:
+            ticker_column = 'symbol'
         else:
-            st.error("❌ No ticker or underlying column found in file.")
+            st.error("❌ No ticker, underlying, or symbol column found in file.")
             st.stop()
 
         if st.button("⚙️ Run OMENReport"):
