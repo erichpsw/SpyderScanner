@@ -101,16 +101,32 @@ if uploaded_file is not None:
                 stealth = ", ".join(sorted(set(ticker_data['trade_spread'].dropna()))) or "None"
                 alerts = ", ".join(sorted(set(ticker_data['alerts'].dropna()))) or "None"
 
+                # Sentiment Calculation - Trade Count with 10% buffer
+                call_count = ticker_data[ticker_data['call/put'].str.lower() == 'call'].shape[0]
+                put_count = ticker_data[ticker_data['call/put'].str.lower() == 'put'].shape[0]
+
+                if (call_count * 1.10) > put_count:
+                    sentiment = "Bullish"
+                elif (put_count * 1.10) > call_count:
+                    sentiment = "Bearish"
+                else:
+                    sentiment = "Neutral"
+
+                # Build header
                 Story.append(Paragraph(f"<b>{ticker} - {mcap} (${stock_price:.2f})</b>", styles['Heading2']))
                 Story.append(Spacer(1, 8))
 
                 Story.append(Paragraph(f"Institutional Trade Type: {trade_type}", styles['BodyText']))
+                Story.append(Paragraph(f"Overall Smart Money Sentiment: {sentiment}", styles['BodyText']))
                 Story.append(Paragraph(f"Stealth Order Flow Indicators: {stealth}", styles['BodyText']))
                 Story.append(Paragraph(f"Smart Money Alerts Triggered: {alerts}", styles['BodyText']))
                 Story.append(Spacer(1, 8))
 
                 report_text += f"\n## {ticker} - {mcap} (${stock_price:.2f})\n"
-                report_text += f"Institutional Trade Type: {trade_type}\nStealth Order Flow Indicators: {stealth}\nSmart Money Alerts Triggered: {alerts}\n\n"
+                report_text += f"Institutional Trade Type: {trade_type}\n"
+                report_text += f"Overall Smart Money Sentiment: {sentiment}\n"
+                report_text += f"Stealth Order Flow Indicators: {stealth}\n"
+                report_text += f"Smart Money Alerts Triggered: {alerts}\n\n"
 
                 filtered = ticker_data.sort_values(by=['premiumvalue'], ascending=False).head(3)
 
@@ -130,7 +146,7 @@ if uploaded_file is not None:
                 summary_text = (
                     f"📌 Summary: Institutional traders are aggressively positioning in {ticker} with "
                     f"significant {trade_type.lower()} trades, including stealth indicators such as "
-                    f"{stealth} and alerts like {alerts}. This setup signals strong bullish bias."
+                    f"{stealth} and alerts like {alerts}. This setup signals strong {sentiment.lower()} bias."
                 )
 
                 Story.append(Paragraph(summary_text, styles['BodyText']))
