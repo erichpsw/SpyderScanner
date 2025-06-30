@@ -5,6 +5,7 @@ import numpy as np
 import re
 from datetime import datetime
 from fpdf import FPDF
+import textwrap
 
 st.set_page_config(page_title="OMEN Smart Money Scanner", layout="centered")
 st.title("🚀 OMEN Smart Money Scanner")
@@ -76,7 +77,11 @@ if uploaded_file is not None:
 
             for ticker in top_tickers:
                 ticker_data = df[df['symbol'] == ticker]
-                stock_price = ticker_data['stock_last_numeric'].mean()
+
+                stock_price = ticker_data['stock_last_numeric'].dropna().mean()
+                if pd.isna(stock_price) or stock_price == 0:
+                    stock_price = df[df['symbol'] == ticker]['stock_last_numeric'].dropna().mean()
+
                 if stock_price < 20:
                     mcap = "Small Cap"
                 elif stock_price <= 100:
@@ -120,8 +125,14 @@ if uploaded_file is not None:
             pdf.add_page()
             pdf.set_auto_page_break(auto=True, margin=15)
             pdf.set_font("Arial", size=10)
+
+            wrapped_lines = []
             for line in report.split('\n'):
+                wrapped_lines.extend(textwrap.wrap(line, width=100) or [" "])
+
+            for line in wrapped_lines:
                 pdf.multi_cell(0, 8, line)
+
             pdf_output = pdf.output(dest='S').encode('latin1')
 
             st.download_button(
