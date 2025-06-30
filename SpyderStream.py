@@ -4,16 +4,11 @@ import pandas as pd
 import numpy as np
 import re
 from datetime import datetime
+from fpdf import FPDF
 
-# ============================================
-# 🚀 Streamlit App Config
-# ============================================
-st.set_page_config(page_title="OMEN Smart Money Scan", layout="centered")
-st.title("🚀 OMEN Smart Money Scan — Spider Tree GPT")
+st.set_page_config(page_title="OMEN Smart Money Scanner", layout="centered")
+st.title("🚀 OMEN Smart Money Scanner")
 
-# ============================================
-# 📥 File Upload Section
-# ============================================
 uploaded_file = st.file_uploader("📤 Upload your SpyderScanner CSV or Excel file", type=["csv", "xls", "xlsx"])
 
 scan_type = None
@@ -56,7 +51,6 @@ if uploaded_file is not None:
                     return 0
 
             df['premiumvalue'] = df['premium'].apply(parse_premium)
-
             df['stock_last_numeric'] = pd.to_numeric(df['stock_last'], errors='coerce').fillna(0)
 
             if scan_type == "Scan Report Small Cap":
@@ -72,32 +66,26 @@ if uploaded_file is not None:
             grouped = df.groupby('symbol').agg({'premiumvalue':'sum'}).reset_index()
             top_tickers = grouped.sort_values(by='premiumvalue', ascending=False).head(3)['symbol'].tolist()
 
-            report = "OMENReport - Smart Money Scan Report\n\n"
-            report += "This report integrates Ben Sturgill’s Smart Money Strategies, focusing on Stealth Sweeps, Block Trades, Repeater Alerts, and Institutional Order Flow. The trades included have been ranked using a proprietary scoring system that balances institutional premium size, Smart Money Alerts, same-day trade flow, multi-strike positioning, and multi-expiration setups.\n\n"
+            # Calculate overall bias correctly
+            calls = df[df['call/put'].str.upper() == 'CALL']['premiumvalue'].sum()
+            puts = df[df['call/put'].str.upper() == 'PUT']['premiumvalue'].sum()
+            overall_bias = "Bullish" if calls >= puts else "Bearish"
 
-            report += "🚀 Top 3 Tickers with High-Probability Trades\n"
+            report = "OMEN Report - Smart Money Scan Report\n\n"
+            report += "This report integrates Ben Sturgill’s Smart Money Strategies, focusing on Stealth Sweeps, Block Trades, Repeater Alerts, and Institutional Order Flow. The trades included have been ranked using a proprietary scoring system that balances institutional premium size, Smart Money Alerts, same-day trade flow, multi-strike positioning, and multi-expiration setups.\n\n"
+            report += "🚀 Top 3 Tickers with High-Probability Trades\n\n"
 
             for ticker in top_tickers:
                 ticker_data = df[df['symbol'] == ticker]
                 stock_price = ticker_data['stock_last_numeric'].mean()
-                if stock_price < 20:
-                    mcap = "Small"
-                elif stock_price <= 100:
-                    mcap = "Mid"
-                else:
-                    mcap = "Large"
+                mcap = "Small Cap" if stock_price < 20 else "Mid Cap" if stock_price <= 100 else "Large Cap"
 
-                trade_type = "Sweep"  # Placeholder logic
+                trade_type = "Sweep"  # Placeholder
                 sentiment = "Bullish" if ticker_data['trade_spread'].str.contains("ask", case=False, na=False).any() else "Bearish"
                 stealth = "Above Ask" if ticker_data['trade_spread'].str.contains("above ask", case=False, na=False).any() else "At Bid"
                 alerts = ", ".join(ticker_data['alerts'].dropna().unique()) if ticker_data['alerts'].dropna().any() else "None"
 
-                report += f"[{ticker}] (Market Cap: {mcap} - Based on User Selection or Full Market Scan)\n"
-                report += "Market Cap Classification:\n"
-                report += "Small Cap: Stock price under $20\n"
-                report += "Mid Cap: Stock price $20 - $100\n"
-                report += "Large Cap: Stock price over $100\n\n"
-
+                report += f"## {ticker} - {mcap}\n\n"
                 report += f"Institutional Trade Type: {trade_type}\n"
                 report += f"Overall Smart Money Sentiment: {sentiment}\n"
                 report += f"Stealth Order Flow Indicators: {stealth}\n"
@@ -115,18 +103,27 @@ if uploaded_file is not None:
                 report += f"\n📌 Summary: Institutional traders are aggressively positioning in {ticker} across multiple strikes and expirations, signaling strong {sentiment.lower()} bias and accumulation/distribution.\n\n"
 
             report += "📈 Final Market Sentiment Verdict\n"
-            report += f"🔵 {sentiment} Bias (Full Market Scan or Selected Market Cap Focus)\n\n"
-            report += f"Institutional sentiment based on Smart Money Flow remains {sentiment.lower()}.\n"
+            report += f"🔵 Bullish Bias: {overall_bias}\n\n"
+            report += f"Institutional sentiment based on Smart Money Flow remains {overall_bias.lower()}.\n"
             report += "Key tickers showing aggressive stealth accumulation/distribution.\n"
             report += "Traders should monitor these names for continued strength and potential follow-through.\n"
 
             st.text_area("📊 OMEN Smart Money Report", report, height=600)
 
+            # PDF generation
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_auto_page_break(auto=True, margin=15)
+            pdf.set_font("Arial", size=10)
+            for line in report.split('\n'):
+                pdf.multi_cell(0, 8, line)
+            pdf_output = pdf.output(dest='S').encode('latin1')
+
             st.download_button(
-                label="📥 Download OMENReport",
-                data=report,
-                file_name="OMENReport.txt",
-                mime="text/plain"
+                label="📥 Download OMENReport as PDF",
+                data=pdf_output,
+                file_name="OMENReport.pdf",
+                mime="application/pdf"
             )
 
         except Exception as e:
