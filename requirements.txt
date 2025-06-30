@@ -5,3 +5,4 @@ openpyxl
 fpdf2
 openai
 google-generativeai
+reportlab
