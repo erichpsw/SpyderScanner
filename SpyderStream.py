@@ -41,6 +41,8 @@ if uploaded_file is not None:
 
             df = df.drop(columns=['stock_cnt.', 'option_cnt.', 'option_cnt..1'], errors='ignore')
 
+            df['symbol'] = df['symbol'].astype(str).str.upper().str.strip()
+
             def parse_premium(val):
                 try:
                     val = str(val).replace('$','').replace(',','').strip().lower()
@@ -63,7 +65,7 @@ if uploaded_file is not None:
                 df = df[df['stock_last_numeric'] > 100]
             elif scan_type == "Scan Report Targeted":
                 tickers = [x.strip().upper() for x in tickers_input.split(',')]
-                df = df[df['symbol'].str.upper().isin(tickers)]
+                df = df[df['symbol'].isin(tickers)]
 
             grouped = df.groupby('symbol').agg({'premiumvalue':'sum'}).reset_index()
             top_tickers = grouped.sort_values(by='premiumvalue', ascending=False).head(3)['symbol'].tolist()
@@ -134,15 +136,15 @@ if uploaded_file is not None:
             pdf = FPDF(orientation='L', unit='mm', format='A4')
             pdf.add_page()
             pdf.set_auto_page_break(auto=True, margin=10)
-            pdf.set_font("Arial", size=7)
+            pdf.set_font("Arial", size=5)  # Smaller font to help with long lines
 
             wrapped_lines = []
             for line in report.split('\n'):
                 line = line.replace(',', ', ')
-                wrapped_lines.extend(textwrap.wrap(line, width=90) or [" "])
+                wrapped_lines.extend(textwrap.wrap(line, width=70) or [" "])
 
             for line in wrapped_lines:
-                pdf.multi_cell(0, 5, line)
+                pdf.multi_cell(0, 4, line)
 
             pdf_output = pdf.output(dest='S').encode('latin1')
 
