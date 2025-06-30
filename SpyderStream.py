@@ -30,11 +30,20 @@ if uploaded_file is not None:
                 df = pd.read_excel(uploaded_file)
 
             df.columns = df.columns.str.strip().str.lower().str.replace(' ', '_').str.replace('-', '_')
+
             st.write("✅ Columns after cleanup:", list(df.columns))
 
             df['symbol'] = df['symbol'].astype(str).str.upper().str.strip()
 
-            df['stock_last'] = pd.to_numeric(df['stock_last'], errors='coerce')
+            df['stock_last'] = pd.to_numeric(
+                df['stock_last']
+                .astype(str)
+                .str.replace('$', '', regex=False)
+                .str.replace(',', '', regex=False)
+                .str.strip(),
+                errors='coerce'
+            )
+
             if df['stock_last'].isnull().all():
                 st.error("❌ Stock_Last column failed to parse. Check CSV formatting.")
 
