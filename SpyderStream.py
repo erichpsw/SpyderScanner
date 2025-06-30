@@ -66,21 +66,25 @@ if uploaded_file is not None:
             grouped = df.groupby('symbol').agg({'premiumvalue':'sum'}).reset_index()
             top_tickers = grouped.sort_values(by='premiumvalue', ascending=False).head(3)['symbol'].tolist()
 
-            # Calculate overall bias correctly
             calls = df[df['call/put'].str.upper() == 'CALL']['premiumvalue'].sum()
             puts = df[df['call/put'].str.upper() == 'PUT']['premiumvalue'].sum()
             overall_bias = "Bullish" if calls >= puts else "Bearish"
 
             report = "OMEN Report - Smart Money Scan Report\n\n"
-            report += "This report integrates Ben Sturgill’s Smart Money Strategies, focusing on Stealth Sweeps, Block Trades, Repeater Alerts, and Institutional Order Flow. The trades included have been ranked using a proprietary scoring system that balances institutional premium size, Smart Money Alerts, same-day trade flow, multi-strike positioning, and multi-expiration setups.\n\n"
+            report += "This report integrates Ben Sturgill's Smart Money Strategies, focusing on Stealth Sweeps, Block Trades, Repeater Alerts, and Institutional Order Flow. The trades included have been ranked using a proprietary scoring system that balances institutional premium size, Smart Money Alerts, same-day trade flow, multi-strike positioning, and multi-expiration setups.\n\n"
             report += "🚀 Top 3 Tickers with High-Probability Trades\n\n"
 
             for ticker in top_tickers:
                 ticker_data = df[df['symbol'] == ticker]
                 stock_price = ticker_data['stock_last_numeric'].mean()
-                mcap = "Small Cap" if stock_price < 20 else "Mid Cap" if stock_price <= 100 else "Large Cap"
+                if stock_price < 20:
+                    mcap = "Small Cap"
+                elif stock_price <= 100:
+                    mcap = "Mid Cap"
+                else:
+                    mcap = "Large Cap"
 
-                trade_type = "Sweep"  # Placeholder
+                trade_type = "Sweep"
                 sentiment = "Bullish" if ticker_data['trade_spread'].str.contains("ask", case=False, na=False).any() else "Bearish"
                 stealth = "Above Ask" if ticker_data['trade_spread'].str.contains("above ask", case=False, na=False).any() else "At Bid"
                 alerts = ", ".join(ticker_data['alerts'].dropna().unique()) if ticker_data['alerts'].dropna().any() else "None"
@@ -110,7 +114,8 @@ if uploaded_file is not None:
 
             st.text_area("📊 OMEN Smart Money Report", report, height=600)
 
-            # PDF generation
+            report = report.replace('’', "'")
+
             pdf = FPDF()
             pdf.add_page()
             pdf.set_auto_page_break(auto=True, margin=15)
