@@ -143,11 +143,10 @@ if uploaded_file is not None:
                     Story.append(Paragraph(trade_line, styles['BodyText']))
                     report_text += trade_line + "\n"
 
-                summary_text = (
-                    f"📌 Summary: Institutional traders are aggressively positioning in {ticker} with "
-                    f"significant {trade_type.lower()} trades, including stealth indicators such as "
-                    f"{stealth} and alerts like {alerts}. This setup signals strong {sentiment.lower()} bias."
-                )
+                    summary_text = (
+                        f"📌 Summary: Institutional traders are aggressively positioning in {ticker} with "
+                        f"significant {trade_type.lower()} trades. This setup signals strong {sentiment.lower()} bias."
+                    )
 
                 Story.append(Paragraph(summary_text, styles['BodyText']))
                 Story.append(Spacer(1, 12))
