@@ -69,14 +69,17 @@ if uploaded_file is not None:
             df['priority_score'] = (df['stealth_rank'] * 1_000_000) + df['premiumvalue']
             df = df.sort_values(by='priority_score', ascending=False)
 
-            # ✅ Stealth Filter — Aggressiveness + Premium
+            # ✅ Stealth Filter
             stealth_groups = (
                 df.groupby(['symbol', 'strike', 'expiration_date', 'call/put', 'trade_spread'])
                 .agg({'premiumvalue': 'sum'})
                 .reset_index()
             )
             stealth_groups['stealth_rank'] = stealth_groups['trade_spread'].map(stealth_weight).fillna(99)
-            stealth_groups = stealth_groups.sort_values(by=['symbol', 'stealth_rank', 'premiumvalue'], ascending=[True, True, False])
+            stealth_groups = stealth_groups.sort_values(
+                by=['symbol', 'stealth_rank', 'premiumvalue'],
+                ascending=[True, True, False]
+            )
 
             filtered_stealth = (
                 stealth_groups.groupby(['symbol'])
@@ -105,7 +108,6 @@ if uploaded_file is not None:
                 (df['trade_spread'].isin(['Above Ask', 'Askish'])) &
                 (df['RepeaterFlag'])
             )
-            # ✅ Cap Filters
             today = datetime.datetime.today()
 
             if scan_type == "Scan Report Small Cap":
