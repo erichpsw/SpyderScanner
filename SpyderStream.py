@@ -25,6 +25,10 @@ scan_type = st.selectbox(
     ]
 )
 
+# ✅ Targeted Scan Input Box (Fixed — appears immediately)
+tickers = None
+if scan_type == "Scan Report Targeted":
+    tickers = st.text_input("Enter tickers separated by commas (e.g., NVDA, TSLA, AAPL):")
 
 if uploaded_file is not None:
     if st.button("⚙️ Run OMEN Smart Money Scan"):
@@ -57,6 +61,7 @@ if uploaded_file is not None:
 
             # ✅ Institutional Order Filter
             df = df[df['flags'].str.contains('sweep|block|multi', case=False, na=False)]
+
             # ✅ Stealth Prioritization Logic
             stealth_weight = {
                 'Above Ask': 1,
@@ -69,7 +74,6 @@ if uploaded_file is not None:
             df['priority_score'] = (df['stealth_rank'] * 1_000_000) + df['premiumvalue']
             df = df.sort_values(by='priority_score', ascending=False)
 
-            # ✅ Stealth Filter
             stealth_groups = (
                 df.groupby(['symbol', 'strike', 'expiration_date', 'call/put', 'trade_spread'])
                 .agg({'premiumvalue': 'sum'})
@@ -108,6 +112,7 @@ if uploaded_file is not None:
                 (df['trade_spread'].isin(['Above Ask', 'Askish'])) &
                 (df['RepeaterFlag'])
             )
+
             today = datetime.datetime.today()
 
             if scan_type == "Scan Report Small Cap":
@@ -120,15 +125,18 @@ if uploaded_file is not None:
                 df['expiration_date_parsed'] = pd.to_datetime(df['expiration_date'], errors='coerce')
                 df = df[df['expiration_date_parsed'] >= today + pd.Timedelta(days=60)]
             elif scan_type == "Scan Report Targeted":
-                tickers = st.text_input("Enter tickers separated by commas (e.g., NVDA, TSLA, AAPL):")
                 if tickers:
                     tickers_list = [ticker.strip().upper() for ticker in tickers.split(",")]
                     df = df[df['symbol'].isin(tickers_list)]
+                else:
+                    st.warning("⚠️ Please enter at least one ticker for Targeted Scan.")
+                    st.stop()
 
             grouped = df.groupby('symbol').agg({'premiumvalue': 'sum'}).reset_index()
 
             top_n = 5 if scan_type == "Scan Report Long Term" else 3
             top_tickers = grouped.sort_values(by='premiumvalue', ascending=False).head(top_n)['symbol'].tolist()
+
             styles = getSampleStyleSheet()
             buffer = io.BytesIO()
             pdf = SimpleDocTemplate(buffer, pagesize=landscape(letter))
