@@ -57,19 +57,34 @@ if uploaded_file is not None:
 
             # ✅ Institutional Order Filter
             df = df[df['flags'].str.contains('sweep|block|multi', case=False, na=False)]
-
-            # ✅ Stealth Weighting + Priority Score
+            # ✅ Stealth Prioritization Logic
             stealth_weight = {
-                'Above Ask': 4,
-                'Askish': 3,
-                'Bidish': -2,
-                'At Bid': -3
+                'Above Ask': 1,
+                'Askish': 2,
+                'At Bid': 3,
+                'Bidish': 4
             }
 
-            df['stealth_score'] = df['trade_spread'].map(stealth_weight).fillna(0)
-            df['priority_score'] = (df['stealth_score'] * 1_000_000) + df['premiumvalue']
-
+            df['stealth_rank'] = df['trade_spread'].map(stealth_weight).fillna(99)
+            df['priority_score'] = (df['stealth_rank'] * 1_000_000) + df['premiumvalue']
             df = df.sort_values(by='priority_score', ascending=False)
+
+            # ✅ Stealth Filter — Aggressiveness + Premium
+            stealth_groups = (
+                df.groupby(['symbol', 'strike', 'expiration_date', 'call/put', 'trade_spread'])
+                .agg({'premiumvalue': 'sum'})
+                .reset_index()
+            )
+            stealth_groups['stealth_rank'] = stealth_groups['trade_spread'].map(stealth_weight).fillna(99)
+            stealth_groups = stealth_groups.sort_values(by=['symbol', 'stealth_rank', 'premiumvalue'], ascending=[True, True, False])
+
+            filtered_stealth = (
+                stealth_groups.groupby(['symbol'])
+                .first()
+                .reset_index()
+            )
+
+            stealth_dict = filtered_stealth.groupby('symbol')['trade_spread'].apply(lambda x: ', '.join(x)).to_dict()
 
             # ✅ Smart Money Alerts
             df['DonkeyKong'] = df['premiumvalue'] >= 1_000_000
@@ -90,7 +105,6 @@ if uploaded_file is not None:
                 (df['trade_spread'].isin(['Above Ask', 'Askish'])) &
                 (df['RepeaterFlag'])
             )
-
             # ✅ Cap Filters
             today = datetime.datetime.today()
 
@@ -113,8 +127,6 @@ if uploaded_file is not None:
 
             top_n = 5 if scan_type == "Scan Report Long Term" else 3
             top_tickers = grouped.sort_values(by='premiumvalue', ascending=False).head(top_n)['symbol'].tolist()
-
-            # ✅ Reporting Section
             styles = getSampleStyleSheet()
             buffer = io.BytesIO()
             pdf = SimpleDocTemplate(buffer, pagesize=landscape(letter))
@@ -134,9 +146,8 @@ if uploaded_file is not None:
 
                 trade_type = "Sweep" if ticker_data['flags'].str.contains("sweep", case=False, na=False).any() else "Block Trade"
 
-                stealth = ", ".join(sorted(set(ticker_data['trade_spread'].dropna()))) or "None"
+                stealth = stealth_dict.get(ticker, 'None')
 
-                # ✅ Alert Logic - Clean Filtered
                 if ticker_data['DonkeyKong'].any():
                     alerts = 'DonkeyKong'
                 elif (
